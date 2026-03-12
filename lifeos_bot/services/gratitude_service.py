@@ -1,0 +1,19 @@
+from __future__ import annotations
+
+from datetime import date
+from sqlalchemy.ext.asyncio import AsyncSession
+from lifeos_bot.database.repositories.gratitude import GratitudeRepo
+from lifeos_bot.database.models import Gratitude
+
+class GratitudeService:
+    def __init__(self, session: AsyncSession) -> None:
+        self.repo = GratitudeRepo(session)
+
+    async def get_gratitude_for_day(self, user_id: int, day: date) -> list[Gratitude]:
+        return await self.repo.list_for_day(user_id, day)
+
+    async def add_gratitude(self, user_id: int, day: date, text: str) -> Gratitude:
+        return await self.repo.add(user_id, day, text)
+
+    async def clear_gratitude(self, user_id: int, day: date) -> None:
+        await self.repo.clear_for_day(user_id, day)
