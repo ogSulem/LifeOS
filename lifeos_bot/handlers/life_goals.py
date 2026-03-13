@@ -16,8 +16,8 @@ from lifeos_bot.keyboards.life_goals_kb import life_categories_kb, life_category
 
 from lifeos_bot.utils.pagination import paginate_by_chars, paginate_by_count
 
-_LIFE_CATS_PER_PAGE = 7
-_LIFE_GOALS_PER_PAGE = 7
+_LIFE_CATS_PER_PAGE = 5
+_LIFE_GOALS_PER_PAGE = 5
 
 router = Router()
 

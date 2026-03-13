@@ -27,7 +27,7 @@ def render_dashboard(
     wakeup = stats.wakeup_at or "—"
     sleep = stats.sleep_at or "—"
     meta_lines.append(f"☀️ {wakeup}")
-    meta_lines.append(f"� {sleep}")
+    meta_lines.append(f"🌙 {sleep}")
     rating = "—" if stats.day_rating is None else str(int(stats.day_rating))
     meta_lines.append(f"⭐ {rating}")
     header += "\n" + "\n".join(meta_lines)

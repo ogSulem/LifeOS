@@ -61,7 +61,7 @@ def _local_now(user_tz: str) -> datetime:
 def _in_minute_window(now: datetime, target: time) -> bool:
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     t0 = day_start.replace(hour=target.hour, minute=target.minute)
-    t1 = t0 + timedelta(minutes=1)
+    t1 = t0 + timedelta(minutes=5)
     return t0 <= now < t1
 
 

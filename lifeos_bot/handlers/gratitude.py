@@ -153,9 +153,12 @@ async def add_gratitude_finish(message: Message, state: FSMContext) -> None:
     if message.from_user is None:
         return
 
-    text = (message.text or "").strip()
+    raw = message.text or ""
     await safe_delete_message(message)
-    if not text:
+
+    texts = [t.strip() for t in raw.splitlines()]
+    texts = [t for t in texts if t]
+    if not texts:
         return
 
     session_maker = get_session_maker()
@@ -163,7 +166,8 @@ async def add_gratitude_finish(message: Message, state: FSMContext) -> None:
         users_repo = UsersRepo(session)
         user = await users_repo.get_or_create(message.from_user.id)
         service = GratitudeService(session)
-        await service.add_gratitude(user.id, user.selected_date, text)
+        for text in texts:
+            await service.add_gratitude(user.id, user.selected_date, text)
         items = await service.get_gratitude_for_day(user.id, user.selected_date)
         await session.commit()
 

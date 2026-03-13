@@ -19,7 +19,7 @@ from lifeos_bot.keyboards.schedule_kb import schedule_input_kb, schedule_kb
 from lifeos_bot.database.models import Event
 from lifeos_bot.utils.pagination import paginate_by_count
 
-_SCHEDULE_PER_PAGE = 7
+_SCHEDULE_PER_PAGE = 5
 
 router = Router()
 

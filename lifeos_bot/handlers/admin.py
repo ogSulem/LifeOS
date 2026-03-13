@@ -9,8 +9,11 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from lifeos_bot.config import settings
 from lifeos_bot.database.db import get_session_maker
+from lifeos_bot.database.repositories.subscriptions import SubscriptionsRepo
 from lifeos_bot.database.repositories.users import UsersRepo
 from lifeos_bot.keyboards.main_kb import dashboard_kb
+from lifeos_bot.keyboards.payments_kb import buy_subscription_kb
+from lifeos_bot.middlewares.subscription import SUBSCRIPTION_TEXT
 from lifeos_bot.services.dashboard_service import DashboardService
 from lifeos_bot.services.quote_service import QuoteService
 from lifeos_bot.utils.renderer import render_dashboard
@@ -35,6 +38,7 @@ def _admin_panel_kb() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="🌙 Ночь", callback_data="admin:test:night"),
             ],
             [InlineKeyboardButton(text="📣 Рассылка", callback_data="admin:broadcast")],
+            [InlineKeyboardButton(text="💳 Подписка (тест)", callback_data="admin:sub:test")],
             [InlineKeyboardButton(text="⬅️ Назад", callback_data="nav:dashboard")],
         ]
     )
@@ -163,5 +167,31 @@ async def admin_broadcast_ok(call: CallbackQuery) -> None:
         return
 
     await safe_delete_message(call.message)
+    await safe_answer_callback(call)
+
+
+@router.callback_query(F.data == "admin:sub:test")
+async def admin_test_subscription(call: CallbackQuery, state: FSMContext) -> None:
+    if call.from_user is None or call.message is None:
+        if call.from_user is not None:
+            await safe_answer_callback(call)
+        return
+    if not _is_admin(call.from_user.id):
+        await safe_answer_callback(call)
+        return
+
+    await state.clear()
+
+    session_maker = get_session_maker()
+    async with session_maker() as session:
+        user = await UsersRepo(session).get_or_create(call.from_user.id)
+        await SubscriptionsRepo(session).deactivate_by_user_id(user.id)
+        await session.commit()
+
+    await safe_edit_message_text(
+        call.message,
+        SUBSCRIPTION_TEXT,
+        reply_markup=buy_subscription_kb(show_back=False),
+    )
     await safe_answer_callback(call)
 

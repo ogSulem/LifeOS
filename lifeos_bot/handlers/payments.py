@@ -29,7 +29,7 @@ async def open_payments(call: CallbackQuery) -> None:
     await safe_edit_message_text(
         call.message,
         "<b>Подписка</b>\n\nОткройте оплату и активируйте подписку.",
-        reply_markup=buy_subscription_kb(),
+        reply_markup=buy_subscription_kb(show_back=True, back_callback_data="nav:dashboard"),
     )
     await safe_answer_callback(call)
 

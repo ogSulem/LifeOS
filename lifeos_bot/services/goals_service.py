@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from lifeos_bot.database.repositories.goals import GoalsRepo
 from lifeos_bot.database.models import DailyGoal
@@ -32,3 +33,7 @@ class GoalsService:
 
     async def update_goal_title_for_user(self, user_id: int, goal_id: int, title: str) -> bool:
         return await self.repo.update_title_for_user(user_id, goal_id, title)
+
+    async def move_goal_to_day_for_user(self, user_id: int, goal_id: int, day: date, *, days_delta: int) -> bool:
+        new_day = day + timedelta(days=days_delta)
+        return await self.repo.move_to_day_for_user(user_id, goal_id, new_day)

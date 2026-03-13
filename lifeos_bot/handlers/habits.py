@@ -17,7 +17,7 @@ from lifeos_bot.keyboards.habits_kb import habits_input_kb, habits_kb
 
 from lifeos_bot.utils.pagination import paginate_by_count
 
-_HABITS_PER_PAGE = 7
+_HABITS_PER_PAGE = 5
 
 router = Router()
 

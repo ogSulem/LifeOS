@@ -60,3 +60,27 @@ class GoalsRepo:
             return False
         goal.title = title
         return True
+
+    async def move_to_day_for_user(self, user_id: int, goal_id: int, new_day: date) -> bool:
+        goal = await self.session.get(DailyGoal, goal_id)
+        if goal is None or int(goal.user_id) != int(user_id):
+            return False
+
+        # Avoid violating uq_daily_goal (user_id, day, title)
+        res = await self.session.execute(
+            select(DailyGoal).where(
+                DailyGoal.user_id == user_id,
+                DailyGoal.day == new_day,
+                DailyGoal.title == goal.title,
+            )
+        )
+        existing = res.scalar_one_or_none()
+        if existing is None:
+            new_goal = DailyGoal(user_id=user_id, day=new_day, title=goal.title, is_done=False)
+            self.session.add(new_goal)
+            await self.session.flush()
+
+        await self.session.execute(
+            delete(DailyGoal).where(DailyGoal.id == goal_id, DailyGoal.user_id == user_id)
+        )
+        return True

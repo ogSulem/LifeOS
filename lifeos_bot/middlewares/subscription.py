@@ -49,8 +49,6 @@ class SubscriptionMiddleware(BaseMiddleware):
                 return await handler(event, data)
             if cb.startswith("support:") or cb == "nav:support":
                 return await handler(event, data)
-            if cb.startswith("admin:") and settings.admin_id is not None and user.id == settings.admin_id:
-                return await handler(event, data)
             # Everything else is blocked until subscription is active
 
         if isinstance(event, Message):
@@ -77,7 +75,11 @@ class SubscriptionMiddleware(BaseMiddleware):
         # Blocked: show subscription screen
         if isinstance(event, CallbackQuery):
             if event.message:
-                await safe_edit_message_text(event.message, SUBSCRIPTION_TEXT, reply_markup=buy_subscription_kb())
+                await safe_edit_message_text(
+                    event.message,
+                    SUBSCRIPTION_TEXT,
+                    reply_markup=buy_subscription_kb(show_back=False),
+                )
             await safe_answer_callback(event, "Нужна подписка", show_alert=True)
             return None
 

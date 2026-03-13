@@ -37,7 +37,7 @@ async def start(message: Message) -> None:
 
     if not active:
         text = SUBSCRIPTION_TEXT
-        kb = buy_subscription_kb()
+        kb = buy_subscription_kb(show_back=False)
     else:
         data_path = Path(__file__).resolve().parents[1] / "data" / "quotes.json"
         quote = QuoteService(data_path).get_quote_of_day()

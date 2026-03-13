@@ -11,7 +11,6 @@ def analytics_kb() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🗓 Месяц", callback_data="analytics:month"),
         ],
         [
-            InlineKeyboardButton(text="📩 Поддержка", callback_data="nav:support"),
             InlineKeyboardButton(text="⬅️ Назад", callback_data="nav:dashboard"),
         ],
     ]

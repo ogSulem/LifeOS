@@ -17,7 +17,7 @@ from lifeos_bot.keyboards.goals_kb import goals_input_kb, goals_kb
 
 from lifeos_bot.utils.pagination import paginate_by_count
 
-_GOALS_PER_PAGE = 7
+_GOALS_PER_PAGE = 5
 
 router = Router()
 
@@ -246,9 +246,12 @@ async def goals_back(call: CallbackQuery, state: FSMContext) -> None:
 async def add_goal_finish(message: Message, state: FSMContext) -> None:
     if message.from_user is None:
         return
-    title = (message.text or "").strip()
+    raw = message.text or ""
     await safe_delete_message(message)
-    if not title:
+
+    titles = [t.strip() for t in raw.splitlines()]
+    titles = [t for t in titles if t]
+    if not titles:
         return
 
     session_maker = get_session_maker()
@@ -256,7 +259,8 @@ async def add_goal_finish(message: Message, state: FSMContext) -> None:
         users_repo = UsersRepo(session)
         user = await users_repo.get_or_create(message.from_user.id)
         service = GoalsService(session)
-        await service.add_goal(user.id, user.selected_date, title)
+        for title in titles:
+            await service.add_goal(user.id, user.selected_date, title)
         goals = await service.get_goals_for_day(user.id, user.selected_date)
         await session.commit()
 
@@ -272,3 +276,51 @@ async def add_goal_finish(message: Message, state: FSMContext) -> None:
             text=view.text,
             reply_markup=goals_kb(sliced.items, page=sliced.page, total_pages=sliced.total_pages),
         )
+
+
+@router.callback_query(F.data.startswith("goals:move:"))
+async def move_goal_to_tomorrow(call: CallbackQuery, state: FSMContext) -> None:
+    if call.from_user is None or call.message is None:
+        if call.from_user is not None:
+            await safe_answer_callback(call)
+        return
+    await state.clear()
+
+    parts = call.data.split(":")
+    if len(parts) < 3:
+        await safe_answer_callback(call)
+        return
+    goal_id_str = parts[2]
+    page = 0
+    if len(parts) >= 4:
+        try:
+            page = int(parts[3])
+        except ValueError:
+            page = 0
+    try:
+        goal_id = int(goal_id_str)
+    except ValueError:
+        await safe_answer_callback(call)
+        return
+
+    session_maker = get_session_maker()
+    async with session_maker() as session:
+        users_repo = UsersRepo(session)
+        user = await users_repo.get_or_create(call.from_user.id)
+        service = GoalsService(session)
+        ok = await service.move_goal_to_day_for_user(user.id, goal_id, user.selected_date, days_delta=1)
+        if not ok:
+            await safe_answer_callback(call)
+            return
+        goals = await service.get_goals_for_day(user.id, user.selected_date)
+        await session.commit()
+
+    view = _render_goals(user.selected_date, [(g.title, g.is_done) for g in goals])
+    all_kb_data = [(int(g.id), bool(g.is_done), i + 1) for i, g in enumerate(goals)]
+    sliced = paginate_by_count(all_kb_data, page=page, per_page=_GOALS_PER_PAGE)
+    await safe_edit_message_text(
+        call.message,
+        view.text,
+        reply_markup=goals_kb(sliced.items, page=sliced.page, total_pages=sliced.total_pages),
+    )
+    await safe_answer_callback(call)

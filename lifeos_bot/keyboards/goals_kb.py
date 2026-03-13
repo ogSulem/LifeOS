@@ -19,6 +19,7 @@ def goals_kb(goals: list[GoalKbItem], page: int = 0, total_pages: int = 1) -> In
         rows.append(
             [
                 InlineKeyboardButton(text=mark_text, callback_data=f"goals:toggle:{goal_id}:{page}"),
+                InlineKeyboardButton(text="⏭", callback_data=f"goals:move:{goal_id}:{page}"),
                 InlineKeyboardButton(text="❌", callback_data=f"goals:delete:{goal_id}:{page}"),
             ]
         )

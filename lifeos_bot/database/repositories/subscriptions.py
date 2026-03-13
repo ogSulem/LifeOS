@@ -36,3 +36,11 @@ class SubscriptionsRepo:
             await self.session.flush()
         sub.is_active = True
         sub.active_until = datetime.utcnow() + timedelta(days=days)
+
+    async def deactivate_by_user_id(self, user_id: int) -> None:
+        sub_res = await self.session.execute(select(Subscription).where(Subscription.user_id == user_id))
+        sub = sub_res.scalar_one_or_none()
+        if sub is None:
+            return
+        sub.is_active = False
+        sub.active_until = datetime.utcnow()

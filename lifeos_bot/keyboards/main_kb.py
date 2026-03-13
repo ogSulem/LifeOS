@@ -30,6 +30,9 @@ def dashboard_kb(selected_day: date, tg_user_id: int | None = None) -> InlineKey
             InlineKeyboardButton(text="⚙️ Настройки", callback_data="nav:settings"),
         ],
         [
+            InlineKeyboardButton(text="📩 Поддержка", callback_data="nav:support"),
+        ],
+        [
             InlineKeyboardButton(text="⬅️", callback_data="day:-1"),
             mid_btn,
             InlineKeyboardButton(text="➡️", callback_data="day:1"),
