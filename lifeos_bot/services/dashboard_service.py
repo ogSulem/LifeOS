@@ -134,7 +134,7 @@ class DashboardService:
     async def _goals_day(self, user_id: int, day: date) -> list[tuple[str, bool]]:
         res = await self.session.execute(
             select(DailyGoal.title, DailyGoal.is_done)
-            .where(DailyGoal.user_id == user_id, DailyGoal.day == day)
+            .where(DailyGoal.user_id == user_id, DailyGoal.day == day, DailyGoal.is_done.is_(False))
             .order_by(DailyGoal.id.desc())
             .limit(5)
         )

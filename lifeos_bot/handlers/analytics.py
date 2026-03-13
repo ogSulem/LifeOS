@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from zoneinfo import ZoneInfo
+
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
@@ -31,6 +33,17 @@ class AnalyticsView:
     text: str
 
 
+def _format_time_msk(dt) -> str:
+    if dt is None:
+        return ""
+    tz_msk = ZoneInfo("Europe/Moscow")
+    tz_utc = ZoneInfo("UTC")
+    try:
+        return dt.replace(tzinfo=tz_utc).astimezone(tz_msk).strftime("%H:%M")
+    except Exception:
+        return dt.strftime("%H:%M")
+
+
 async def _render_analytics_text(user_id: int, snapshot) -> AnalyticsView:
     goals_pct = 0
     if snapshot.goals_total:
@@ -49,9 +62,9 @@ async def _render_analytics_text(user_id: int, snapshot) -> AnalyticsView:
     if snapshot.wakeup_at or snapshot.sleep_at:
         text += "\n<b>Сон</b>\n"
         if snapshot.wakeup_at:
-            text += f"- Подъем: {snapshot.wakeup_at.strftime('%H:%M')}\n"
+            text += f"- Подъем: {_format_time_msk(snapshot.wakeup_at)}\n"
         if snapshot.sleep_at:
-            text += f"- Сон: {snapshot.sleep_at.strftime('%H:%M')}\n"
+            text += f"- Сон: {_format_time_msk(snapshot.sleep_at)}\n"
 
     if snapshot.day_rating is not None:
         text += "\n<b>📝 День</b>\n"
