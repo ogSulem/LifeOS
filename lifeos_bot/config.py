@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     bot_token: str = Field(validation_alias="BOT_TOKEN")
     database_url: str = Field(validation_alias="DATABASE_URL")
 
+    redis_url: str | None = Field(default=None, validation_alias="REDIS_URL")
+
     tz: str = Field(default="Europe/Moscow", validation_alias="TZ")
 
     admin_id: int | None = Field(default=None, validation_alias="ADMIN_ID")

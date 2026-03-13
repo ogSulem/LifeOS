@@ -15,11 +15,21 @@ services:
       timeout: 5s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - lifeos_redisdata:/data
+
   bot:
     build: .
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     env_file:
       - .env
     environment:
@@ -29,3 +39,4 @@ services:
 
 volumes:
   lifeos_pgdata:
+  lifeos_redisdata:

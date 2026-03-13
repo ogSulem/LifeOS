@@ -32,16 +32,31 @@ class HabitsScreen:
     keyboard_data: list[tuple[int, str, bool]]
 
 
-def _render_habits(day: date, habits: list[tuple[int, str, bool]]) -> HabitsScreen:
+def _render_habits(day: date, habits: list[tuple[int, str, bool]], *, page: int = 0) -> HabitsScreen:
     header = f"<b>⚡ Привычки</b>\n<b>Дата:</b> {day.strftime('%d.%m.%Y')}"
     if not habits:
         body = "\n\nПока нет привычек. Добавьте первую."
     else:
-        lines: list[str] = []
+        max_chars = 3500
+
+        lines_all: list[str] = []
         for i, (_, title, done) in enumerate(habits):
             mark = "✅" if done else "⬜️"
-            lines.append(f"{i + 1}. {mark} {title}")
-        body = "\n\n" + "\n".join(lines)
+            lines_all.append(f"{i + 1}. {mark} {title}")
+
+        text_all = header + "\n\n" + "\n".join(lines_all)
+        if len(text_all) <= max_chars:
+            body = "\n\n" + "\n".join(lines_all)
+        else:
+            sliced = paginate_by_count(habits, page=page, per_page=_HABITS_PER_PAGE)
+            start_num = sliced.page * _HABITS_PER_PAGE
+
+            lines_page: list[str] = []
+            for i, (_, title, done) in enumerate(sliced.items):
+                mark = "✅" if done else "⬜️"
+                lines_page.append(f"{start_num + i + 1}. {mark} {title}")
+            body = "\n\n" + "\n".join(lines_page)
+
     return HabitsScreen(text=header + body, keyboard_data=habits)
 
 
@@ -58,6 +73,19 @@ async def _load_habits(tg_user_id: int) -> tuple[HabitsScreen, int | None, int |
     return _render_habits(user.selected_date, habits_data), user.dashboard_chat_id, user.dashboard_message_id
 
 
+async def _load_habits_raw(tg_user_id: int) -> tuple[date, list[tuple[int, str, bool]]]:
+    session_maker = get_session_maker()
+    async with session_maker() as session:
+        users_repo = UsersRepo(session)
+        user = await users_repo.get_or_create(tg_user_id)
+
+        service = HabitService(session)
+        habits_data = await service.get_habits_with_logs(user.id, user.selected_date)
+        await session.commit()
+
+    return user.selected_date, habits_data
+
+
 @router.callback_query(F.data == "nav:habits")
 async def open_habits(call: CallbackQuery, state: FSMContext) -> None:
     if call.from_user is None or call.message is None:
@@ -66,11 +94,11 @@ async def open_habits(call: CallbackQuery, state: FSMContext) -> None:
         return
     await state.clear()
 
-    view, _, _ = await _load_habits(call.from_user.id)
-    sliced = paginate_by_count(view.keyboard_data, page=0, per_page=_HABITS_PER_PAGE)
+    day, habits_data = await _load_habits_raw(call.from_user.id)
+    sliced = paginate_by_count(habits_data, page=0, per_page=_HABITS_PER_PAGE)
     await safe_edit_message_text(
         call.message,
-        view.text,
+        _render_habits(day, habits_data, page=sliced.page).text,
         reply_markup=habits_kb(sliced.items, page=sliced.page, total_pages=sliced.total_pages),
     )
     await safe_answer_callback(call)
@@ -91,11 +119,11 @@ async def habits_page(call: CallbackQuery, state: FSMContext) -> None:
         await safe_answer_callback(call)
         return
 
-    view, _, _ = await _load_habits(call.from_user.id)
-    sliced = paginate_by_count(view.keyboard_data, page=page, per_page=_HABITS_PER_PAGE)
+    day, habits_data = await _load_habits_raw(call.from_user.id)
+    sliced = paginate_by_count(habits_data, page=page, per_page=_HABITS_PER_PAGE)
     await safe_edit_message_text(
         call.message,
-        view.text,
+        _render_habits(day, habits_data, page=sliced.page).text,
         reply_markup=habits_kb(sliced.items, page=sliced.page, total_pages=sliced.total_pages),
     )
     await safe_answer_callback(call)
@@ -141,11 +169,11 @@ async def delete_habit(call: CallbackQuery, state: FSMContext) -> None:
             return
         await session.commit()
 
-    view, _, _ = await _load_habits(call.from_user.id)
-    sliced = paginate_by_count(view.keyboard_data, page=page, per_page=_HABITS_PER_PAGE)
+    day, habits_data = await _load_habits_raw(call.from_user.id)
+    sliced = paginate_by_count(habits_data, page=page, per_page=_HABITS_PER_PAGE)
     await safe_edit_message_text(
         call.message,
-        view.text,
+        _render_habits(day, habits_data, page=sliced.page).text,
         reply_markup=habits_kb(sliced.items, page=sliced.page, total_pages=sliced.total_pages),
     )
     await safe_answer_callback(call)
@@ -223,11 +251,11 @@ async def add_habit_back(call: CallbackQuery, state: FSMContext) -> None:
             await safe_answer_callback(call)
         return
 
-    view, _, _ = await _load_habits(call.from_user.id)
-    sliced = paginate_by_count(view.keyboard_data, page=0, per_page=_HABITS_PER_PAGE)
+    day, habits_data = await _load_habits_raw(call.from_user.id)
+    sliced = paginate_by_count(habits_data, page=0, per_page=_HABITS_PER_PAGE)
     await safe_edit_message_text(
         call.message,
-        view.text,
+        _render_habits(day, habits_data, page=sliced.page).text,
         reply_markup=habits_kb(sliced.items, page=sliced.page, total_pages=sliced.total_pages),
     )
     await safe_answer_callback(call)

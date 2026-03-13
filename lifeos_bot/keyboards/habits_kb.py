@@ -11,7 +11,7 @@ def habits_kb(habits: list[tuple[int, str, bool]], page: int = 0, total_pages: i
     rows.append([InlineKeyboardButton(text="➕ Добавить привычку", callback_data="habits:add")])
 
     for i, (habit_id, title, done) in enumerate(habits):
-        num = page * 7 + i + 1
+        num = page * 5 + i + 1
         mark_emoji = "↩️" if done else "✅"
         rows.append(
             [

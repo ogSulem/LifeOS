@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from aiogram import Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.redis import RedisStorage
 
 from lifeos_bot.handlers.analytics import router as analytics_router
 from lifeos_bot.handlers.admin import router as admin_router
@@ -17,11 +19,16 @@ from lifeos_bot.handlers.start import router as start_router
 from lifeos_bot.handlers.support import router as support_router
 from lifeos_bot.handlers.thoughts import router as thoughts_router
 from lifeos_bot.handlers.tracking import router as tracking_router
+from lifeos_bot.config import settings
 from lifeos_bot.middlewares.subscription import SubscriptionMiddleware
 
 
 def create_dispatcher() -> Dispatcher:
-    dp = Dispatcher()
+    storage = MemoryStorage()
+    if settings.redis_url:
+        storage = RedisStorage.from_url(settings.redis_url)
+
+    dp = Dispatcher(storage=storage)
 
     dp.update.middleware(SubscriptionMiddleware())
 

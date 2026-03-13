@@ -31,16 +31,30 @@ class GoalsScreen:
     text: str
 
 
-def _render_goals(day: date, items: list[tuple[str, bool]]) -> GoalsScreen:
+def _render_goals(day: date, items: list[tuple[str, bool]], *, page: int = 0) -> GoalsScreen:
     header = f"<b>🎯 Цели</b>\n<b>Дата:</b> {day.strftime('%d.%m.%Y')}"
     if not items:
         body = "\n\nПока нет целей."
     else:
-        lines: list[str] = []
+        max_chars = 3500
+
+        lines_all: list[str] = []
         for i, (title, done) in enumerate(items):
             mark = "✅" if done else "⬜️"
-            lines.append(f"{i + 1}. {mark} {title}")
-        body = "\n\n" + "\n".join(lines)
+            lines_all.append(f"{i + 1}. {mark} {title}")
+
+        text_all = header + "\n\n" + "\n".join(lines_all)
+        if len(text_all) <= max_chars:
+            body = "\n\n" + "\n".join(lines_all)
+        else:
+            sliced = paginate_by_count(items, page=page, per_page=_GOALS_PER_PAGE)
+            start_num = sliced.page * _GOALS_PER_PAGE
+
+            lines_page: list[str] = []
+            for i, (title, done) in enumerate(sliced.items):
+                mark = "✅" if done else "⬜️"
+                lines_page.append(f"{start_num + i + 1}. {mark} {title}")
+            body = "\n\n" + "\n".join(lines_page)
     return GoalsScreen(text=header + body)
 
 
@@ -76,7 +90,7 @@ async def open_goals(call: CallbackQuery, state: FSMContext) -> None:
 
     selected_date, goals = await _load_goals_for_day(call.from_user.id)
 
-    view = _render_goals(selected_date, [(title, done) for _, title, done in goals])
+    view = _render_goals(selected_date, [(title, done) for _, title, done in goals], page=0)
     all_kb_data = [(goal_id, done, i + 1) for i, (goal_id, title, done) in enumerate(goals)]
     sliced = paginate_by_count(all_kb_data, page=0, per_page=_GOALS_PER_PAGE)
     await safe_edit_message_text(
@@ -104,7 +118,7 @@ async def goals_page(call: CallbackQuery, state: FSMContext) -> None:
 
     selected_date, goals = await _load_goals_for_day(call.from_user.id)
 
-    view = _render_goals(selected_date, [(title, done) for _, title, done in goals])
+    view = _render_goals(selected_date, [(title, done) for _, title, done in goals], page=page)
     all_kb_data = [(goal_id, done, i + 1) for i, (goal_id, title, done) in enumerate(goals)]
     sliced = paginate_by_count(all_kb_data, page=page, per_page=_GOALS_PER_PAGE)
     await safe_edit_message_text(
@@ -162,7 +176,7 @@ async def toggle_goal(call: CallbackQuery, state: FSMContext) -> None:
         goals = await service.get_goals_for_day(user.id, user.selected_date)
         await session.commit()
 
-    view = _render_goals(user.selected_date, [(g.title, g.is_done) for g in goals])
+    view = _render_goals(user.selected_date, [(g.title, g.is_done) for g in goals], page=page)
     all_kb_data = [(int(g.id), bool(g.is_done), i + 1) for i, g in enumerate(goals)]
     sliced = paginate_by_count(all_kb_data, page=page, per_page=_GOALS_PER_PAGE)
     await safe_edit_message_text(
@@ -210,7 +224,7 @@ async def delete_goal(call: CallbackQuery, state: FSMContext) -> None:
         goals = await service.get_goals_for_day(user.id, user.selected_date)
         await session.commit()
 
-    view = _render_goals(user.selected_date, [(g.title, g.is_done) for g in goals])
+    view = _render_goals(user.selected_date, [(g.title, g.is_done) for g in goals], page=page)
     all_kb_data = [(int(g.id), bool(g.is_done), i + 1) for i, g in enumerate(goals)]
     sliced = paginate_by_count(all_kb_data, page=page, per_page=_GOALS_PER_PAGE)
     await safe_edit_message_text(
@@ -231,7 +245,7 @@ async def goals_back(call: CallbackQuery, state: FSMContext) -> None:
 
     selected_date, goals = await _load_goals_for_day(call.from_user.id)
 
-    view = _render_goals(selected_date, [(title, done) for _, title, done in goals])
+    view = _render_goals(selected_date, [(title, done) for _, title, done in goals], page=0)
     all_kb_data = [(goal_id, done, i + 1) for i, (goal_id, title, done) in enumerate(goals)]
     sliced = paginate_by_count(all_kb_data, page=0, per_page=_GOALS_PER_PAGE)
     await safe_edit_message_text(
@@ -266,7 +280,7 @@ async def add_goal_finish(message: Message, state: FSMContext) -> None:
 
     await state.clear()
     if user.dashboard_chat_id and user.dashboard_message_id:
-        view = _render_goals(user.selected_date, [(g.title, g.is_done) for g in goals])
+        view = _render_goals(user.selected_date, [(g.title, g.is_done) for g in goals], page=0)
         all_kb_data = [(int(g.id), bool(g.is_done), i + 1) for i, g in enumerate(goals)]
         sliced = paginate_by_count(all_kb_data, page=0, per_page=_GOALS_PER_PAGE)
         await safe_bot_edit_message_text(
@@ -315,7 +329,7 @@ async def move_goal_to_tomorrow(call: CallbackQuery, state: FSMContext) -> None:
         goals = await service.get_goals_for_day(user.id, user.selected_date)
         await session.commit()
 
-    view = _render_goals(user.selected_date, [(g.title, g.is_done) for g in goals])
+    view = _render_goals(user.selected_date, [(g.title, g.is_done) for g in goals], page=page)
     all_kb_data = [(int(g.id), bool(g.is_done), i + 1) for i, g in enumerate(goals)]
     sliced = paginate_by_count(all_kb_data, page=page, per_page=_GOALS_PER_PAGE)
     await safe_edit_message_text(

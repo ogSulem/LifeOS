@@ -14,7 +14,7 @@ from lifeos_bot.database.repositories.users import UsersRepo
 from lifeos_bot.services.life_goals_service import LifeGoalsService
 from lifeos_bot.keyboards.life_goals_kb import life_categories_kb, life_category_kb, life_input_kb
 
-from lifeos_bot.utils.pagination import paginate_by_chars, paginate_by_count
+from lifeos_bot.utils.pagination import paginate_by_count
 
 _LIFE_CATS_PER_PAGE = 5
 _LIFE_GOALS_PER_PAGE = 5
@@ -56,22 +56,32 @@ def _render_category(
         body = "\n\nПока нет целей."
         return LifeGoalsScreen(text=header + body), 0, 1, []
 
-    sliced = paginate_by_count(goals, page=page, per_page=_LIFE_GOALS_PER_PAGE)
+    max_chars = 3500
 
-    lines: list[str] = []
-    nums: list[int] = []
-    start_num = sliced.page * _LIFE_GOALS_PER_PAGE
-    for i, (t, done) in enumerate(sliced.items):
-        num = start_num + i + 1
-        nums.append(num)
+    lines_all: list[str] = []
+    for i, (t, done) in enumerate(goals):
         mark = "✅" if done else "⬜️"
-        lines.append(f"{num}. {mark} {t}")
+        lines_all.append(f"{i + 1}. {mark} {t}")
 
-    # Keep rendering safe in Telegram limits
-    text_slice = paginate_by_chars(lines, page=0, header=header + "\n\n")
-    body = "\n\n" + "\n".join(text_slice.items)
+    text_all = header + "\n\n" + "\n".join(lines_all)
+    if len(text_all) <= max_chars:
+        body = "\n\n" + "\n".join(lines_all)
+    else:
+        sliced_text = paginate_by_count(goals, page=page, per_page=_LIFE_GOALS_PER_PAGE)
+        start_num = sliced_text.page * _LIFE_GOALS_PER_PAGE
+        lines_page: list[str] = []
+        for i, (t, done) in enumerate(sliced_text.items):
+            mark = "✅" if done else "⬜️"
+            lines_page.append(f"{start_num + i + 1}. {mark} {t}")
+        body = "\n\n" + "\n".join(lines_page)
 
-    return LifeGoalsScreen(text=header + body), sliced.page, sliced.total_pages, nums
+    sliced_kb = paginate_by_count(goals, page=page, per_page=_LIFE_GOALS_PER_PAGE)
+    nums: list[int] = []
+    start_num = sliced_kb.page * _LIFE_GOALS_PER_PAGE
+    for i, _ in enumerate(sliced_kb.items):
+        nums.append(start_num + i + 1)
+
+    return LifeGoalsScreen(text=header + body), sliced_kb.page, sliced_kb.total_pages, nums
 
 
 async def _load_categories(tg_user_id: int) -> tuple[LifeCatsScreen, list[tuple[int, str]]]:
