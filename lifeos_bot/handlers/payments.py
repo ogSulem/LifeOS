@@ -11,6 +11,7 @@ from lifeos_bot.database.repositories.subscriptions import SubscriptionsRepo
 from lifeos_bot.database.repositories.users import UsersRepo
 from lifeos_bot.keyboards.payments_kb import buy_subscription_kb, yookassa_payment_kb
 from lifeos_bot.keyboards.main_kb import dashboard_kb
+from lifeos_bot.middlewares.subscription import SUBSCRIPTION_TEXT
 from lifeos_bot.services.dashboard_service import DashboardService
 from lifeos_bot.services.payment_service import PaymentService
 from lifeos_bot.services.quote_service import QuoteService
@@ -23,9 +24,24 @@ router = Router()
 
 @router.callback_query(F.data == "nav:payments")
 async def open_payments(call: CallbackQuery) -> None:
-    if call.message is None:
+    if call.from_user is None or call.message is None:
         await safe_answer_callback(call)
         return
+
+    session_maker = get_session_maker()
+    async with session_maker() as session:
+        active = await SubscriptionsRepo(session).is_active_by_tg_id(call.from_user.id)
+        await session.commit()
+
+    if not active:
+        await safe_edit_message_text(
+            call.message,
+            SUBSCRIPTION_TEXT,
+            reply_markup=buy_subscription_kb(show_back=False),
+        )
+        await safe_answer_callback(call)
+        return
+
     await safe_edit_message_text(
         call.message,
         "<b>Подписка</b>\n\nОткройте оплату и активируйте подписку.",
