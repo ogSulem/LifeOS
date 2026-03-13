@@ -219,11 +219,11 @@ async def toggle_habit(call: CallbackQuery, state: FSMContext) -> None:
             return
         await session.commit()
 
-    view, _, _ = await _load_habits(call.from_user.id)
-    sliced = paginate_by_count(view.keyboard_data, page=page, per_page=_HABITS_PER_PAGE)
+    day, habits_data = await _load_habits_raw(call.from_user.id)
+    sliced = paginate_by_count(habits_data, page=page, per_page=_HABITS_PER_PAGE)
     await safe_edit_message_text(
         call.message,
-        view.text,
+        _render_habits(day, habits_data, page=sliced.page).text,
         reply_markup=habits_kb(sliced.items, page=sliced.page, total_pages=sliced.total_pages),
     )
     await safe_answer_callback(call)

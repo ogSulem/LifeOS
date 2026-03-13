@@ -39,28 +39,49 @@ class ScheduleScreen:
     text: str
 
 
-def _render_schedule(day: date, items: list[tuple[str | None, str | None, str]], page: int) -> tuple[ScheduleScreen, int, int]:
+def _render_schedule(
+    day: date,
+    items: list[tuple[str | None, str | None, str]],
+    *,
+    page: int,
+    per_page: int,
+) -> ScheduleScreen:
     header = f"<b>📅 Расписание</b>\n<b>Дата:</b> {day.strftime('%d.%m.%Y')}"
     if not items:
         body = "\n\nПока нет событий."
     else:
-        lines: list[str] = []
-        for i, (t_from, t_to, title) in enumerate(items):
-            if t_from and t_to:
-                time_part = f"{t_from}-{t_to}"
-            elif t_from:
-                time_part = t_from
-            else:
-                time_part = ""
+        max_chars = 3500
 
-            if time_part:
-                lines.append(f"{time_part} — {title}")
-            else:
-                lines.append(title)
-        body = "\n\n" + "\n".join(lines)
+        def _lines(src: list[tuple[str | None, str | None, str]]) -> list[str]:
+            lines_out: list[str] = []
+            for t_from, t_to, title in src:
+                if t_from and t_to:
+                    time_part = f"{t_from}-{t_to}"
+                elif t_from:
+                    time_part = t_from
+                else:
+                    time_part = ""
+
+                if time_part:
+                    lines_out.append(f"{time_part} — {title}")
+                else:
+                    lines_out.append(title)
+            return lines_out
+
+        lines_all = _lines(items)
+        hint = "\n\nДля изменения используйте кнопки у события."
+        text_all = header + "\n\n" + "\n".join(lines_all) + hint
+
+        if len(text_all) <= max_chars:
+            body = "\n\n" + "\n".join(lines_all)
+        else:
+            start = page * per_page
+            end = start + per_page
+            lines_page = _lines(items[start:end])
+            body = "\n\n" + "\n".join(lines_page)
 
     hint = "\n\nДля изменения используйте кнопки у события."
-    return ScheduleScreen(text=header + body + hint), page, 1
+    return ScheduleScreen(text=header + body + hint)
 
 
 async def _load_schedule_screen(tg_user_id: int, page: int) -> tuple[ScheduleScreen, int, int, list[tuple[int, str | None, str | None, str]]]:
@@ -73,7 +94,13 @@ async def _load_schedule_screen(tg_user_id: int, page: int) -> tuple[ScheduleScr
 
     all_items = [(e.id, e.time_from, e.time_to, e.title) for e in events]
     sliced = paginate_by_count(all_items, page=page, per_page=_SCHEDULE_PER_PAGE)
-    view, _, _ = _render_schedule(user.selected_date, [(x[1], x[2], x[3]) for x in sliced.items], page=sliced.page)
+
+    view = _render_schedule(
+        user.selected_date,
+        [(x[1], x[2], x[3]) for x in all_items],
+        page=sliced.page,
+        per_page=_SCHEDULE_PER_PAGE,
+    )
     return view, sliced.page, sliced.total_pages, sliced.items
 
 
@@ -126,7 +153,12 @@ async def _load_schedule(tg_user_id: int) -> tuple[ScheduleScreen, int | None, i
         events = await ScheduleService(session).get_events_for_day(user.id, user.selected_date)
         await session.commit()
 
-    view, _, _ = _render_schedule(user.selected_date, [(e.time_from, e.time_to, e.title) for e in events], page=0)
+    view = _render_schedule(
+        user.selected_date,
+        [(e.time_from, e.time_to, e.title) for e in events],
+        page=0,
+        per_page=_SCHEDULE_PER_PAGE,
+    )
     return view, user.dashboard_chat_id, user.dashboard_message_id
 
 
