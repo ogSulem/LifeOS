@@ -74,7 +74,9 @@ class AIService:
         timeline: list[dict[str, Any]],
     ) -> str:
         goals_pct = int((snapshot.goals_done / snapshot.goals_total * 100) if snapshot.goals_total > 0 else 0)
-        period = f"{snapshot.period_title}: {snapshot.date_from.isoformat()} → {snapshot.date_to.isoformat()}"
+        period = (
+            f"{snapshot.period_title}: {snapshot.date_from.strftime('%d.%m.%Y')} → {snapshot.date_to.strftime('%d.%m.%Y')}"
+        )
 
         lines: list[str] = [
             f"user_id={user_id}",

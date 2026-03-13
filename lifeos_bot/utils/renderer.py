@@ -21,15 +21,14 @@ def render_dashboard(
     keyboard: InlineKeyboardMarkup,
     stats: DashboardStats,
 ) -> DashboardView:
-    header = f"<b>🧠 LifeOS</b>\n{day.strftime('%d.%m.%Y')}"
+    rating = "—" if stats.day_rating is None else str(int(stats.day_rating))
+    header = f"<b>🧠 LifeOS</b>\n{day.strftime('%d.%m.%Y')} ⭐ {rating}"
 
     meta_lines: list[str] = []
     wakeup = stats.wakeup_at or "—"
     sleep = stats.sleep_at or "—"
     meta_lines.append(f"☀️ {wakeup}")
     meta_lines.append(f"🌙 {sleep}")
-    rating = "—" if stats.day_rating is None else str(int(stats.day_rating))
-    meta_lines.append(f"⭐ {rating}")
     header += "\n" + "\n".join(meta_lines)
 
     quote_block = ""
@@ -38,13 +37,14 @@ def render_dashboard(
         if quote.author:
             quote_block += f"\n<i>— {quote.author}</i>"
 
+    goals_check = " ✅" if stats.goals_total > 0 and stats.goals_done == stats.goals_total else ""
+    habits_check = " ✅" if stats.habits_total > 0 and stats.habits_done == stats.habits_total else ""
     body = "\n\n" + "\n".join(
         [
-            f"🎯 Цели: {stats.goals_done}/{stats.goals_total}",
-            f"⚡ Полезно: {stats.habits_done}/{stats.habits_total}",
+            f"🎯 Цели: {stats.goals_done}/{stats.goals_total}{goals_check}",
+            f"⚡ Привычки: {stats.habits_done}/{stats.habits_total}{habits_check}",
             f"💭 Мысли: {stats.thoughts}",
             f"🙏 Благодарности: {stats.gratitude}",
-            f"📅 Расписание: {stats.events}",
             f"🔥 Стрик: {stats.streak_text}",
         ]
     )
@@ -55,7 +55,7 @@ def render_dashboard(
         for i, (title, done) in enumerate(stats.habits_list):
             mark = "✅" if done else "⬜️"
             lines.append(f"{i + 1}. {mark} {title}")
-        habits_block = "\n\n<b>⚡ Полезное</b>\n" + "\n".join(lines)
+        habits_block = "\n\n<b>⚡ Привычки</b>\n" + "\n".join(lines)
 
     schedule_block = ""
     if stats.events_list:

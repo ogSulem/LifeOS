@@ -32,7 +32,7 @@ class GoalsScreen:
 
 
 def _render_goals(day: date, items: list[tuple[str, bool]]) -> GoalsScreen:
-    header = f"<b>🎯 Цели</b>\n<b>Дата:</b> {day.isoformat()}"
+    header = f"<b>🎯 Цели</b>\n<b>Дата:</b> {day.strftime('%d.%m.%Y')}"
     if not items:
         body = "\n\nПока нет целей."
     else:

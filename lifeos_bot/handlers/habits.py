@@ -33,7 +33,7 @@ class HabitsScreen:
 
 
 def _render_habits(day: date, habits: list[tuple[int, str, bool]]) -> HabitsScreen:
-    header = f"<b>⚡ Полезное</b>\n<b>Дата:</b> {day.isoformat()}"
+    header = f"<b>⚡ Привычки</b>\n<b>Дата:</b> {day.strftime('%d.%m.%Y')}"
     if not habits:
         body = "\n\nПока нет привычек. Добавьте первую."
     else:

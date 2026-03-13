@@ -23,7 +23,7 @@ def dashboard_kb(selected_day: date, tg_user_id: int | None = None) -> InlineKey
         [
             InlineKeyboardButton(text="🙏 Благодарности", callback_data="nav:gratitude"),
             InlineKeyboardButton(text="🧭 Жизненные цели", callback_data="nav:life_goals"),
-            InlineKeyboardButton(text="⚡ Полезное", callback_data="nav:habits"),
+            InlineKeyboardButton(text="⚡ Привычки", callback_data="nav:habits"),
         ],
         [
             InlineKeyboardButton(text="📊 Аналитика", callback_data="nav:analytics"),

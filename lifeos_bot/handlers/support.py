@@ -98,7 +98,7 @@ async def support_finish(message: Message, state: FSMContext) -> None:
         sub_until = "unknown"
         if isinstance(sub, Subscription):
             sub_active = str(bool(sub.is_active))
-            sub_until = sub.active_until.isoformat() if sub.active_until else "-"
+            sub_until = sub.active_until.strftime("%d.%m.%Y") if sub.active_until else "-"
 
         await safe_send_message(
             message.bot,

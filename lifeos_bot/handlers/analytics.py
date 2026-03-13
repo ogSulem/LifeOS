@@ -37,7 +37,7 @@ async def _render_analytics_text(user_id: int, snapshot) -> AnalyticsView:
 
     text = (
         f"<b>📊 Аналитика — {snapshot.period_title}</b>\n"
-        f"<b>Период:</b> {snapshot.date_from.isoformat()} → {snapshot.date_to.isoformat()}\n\n"
+        f"<b>Период:</b> {snapshot.date_from.strftime('%d.%m.%Y')} → {snapshot.date_to.strftime('%d.%m.%Y')}\n\n"
         f"<b>🎯 Цели:</b> {snapshot.goals_done}/{snapshot.goals_total} ({goals_pct}%)\n"
         f"<b>⚡ Привычки:</b> выполнено {snapshot.habits_done} (всего активных {snapshot.habits_total})\n"
         f"<b>💭 Мысли:</b> {snapshot.thoughts}\n"

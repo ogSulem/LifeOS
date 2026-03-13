@@ -30,7 +30,7 @@ class ThoughtsScreen:
 
 
 def _render_thoughts(day: date, items: list[str], page: int) -> tuple[ThoughtsScreen, int, int]:
-    header = f"<b>💭 Мысли</b>\n<b>Дата:</b> {day.isoformat()}"
+    header = f"<b>💭 Мысли</b>\n<b>Дата:</b> {day.strftime('%d.%m.%Y')}"
     if not items:
         body = "\n\nПока нет записей."
         return ThoughtsScreen(text=header + body), 0, 1

@@ -30,7 +30,7 @@ class GratitudeScreen:
 
 
 def _render_gratitude(day: date, items: list[str], page: int) -> tuple[GratitudeScreen, int, int]:
-    header = f"<b>🙏 Благодарности</b>\n<b>Дата:</b> {day.isoformat()}"
+    header = f"<b>🙏 Благодарности</b>\n<b>Дата:</b> {day.strftime('%d.%m.%Y')}"
     if not items:
         body = "\n\nПока нет записей."
         return GratitudeScreen(text=header + body), 0, 1

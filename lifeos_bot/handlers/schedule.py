@@ -40,7 +40,7 @@ class ScheduleScreen:
 
 
 def _render_schedule(day: date, items: list[tuple[str | None, str | None, str]], page: int) -> tuple[ScheduleScreen, int, int]:
-    header = f"<b>📅 Расписание</b>\n<b>Дата:</b> {day.isoformat()}"
+    header = f"<b>📅 Расписание</b>\n<b>Дата:</b> {day.strftime('%d.%m.%Y')}"
     if not items:
         body = "\n\nПока нет событий."
     else:
