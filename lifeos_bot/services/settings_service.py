@@ -33,10 +33,9 @@ class SettingsService:
         await self.habit_templates.replace_all(user_id, titles)
 
     async def apply_schedule_template_seed_once(self, user_id: int, day: date) -> None:
-        if await self.applied_days.is_applied(user_id, day):
-            return
-
         existing = await self.events.list_for_day(user_id, day)
+        if existing:
+            return
         existing_keys = {(e.time_from or "", str(e.title).strip()) for e in existing}
 
         items = await self.templates.list_for_user(user_id)
@@ -46,7 +45,8 @@ class SettingsService:
                 continue
             await self.events.add(user_id, day, title=x.title, time_from=x.time_from, time_to=None)
 
-        await self.applied_days.mark_applied(user_id, day)
+        if not await self.applied_days.is_applied(user_id, day):
+            await self.applied_days.mark_applied(user_id, day)
 
     async def apply_habit_template(self, user_id: int) -> None:
         templates = await self.habit_templates.list_for_user(user_id)

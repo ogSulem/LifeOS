@@ -207,7 +207,11 @@ async def add_habit_start(call: CallbackQuery, state: FSMContext) -> None:
         await safe_answer_callback(call)
         return
     await state.set_state(HabitsStates.waiting_title)
-    await safe_edit_message_text(call.message, "Введите название привычки одним сообщением:", reply_markup=habits_input_kb())
+    await safe_edit_message_text(
+        call.message,
+        "Введите привычки одним сообщением — по одной на строку.\n\nПример:\n`Вода 2л`\n`Чтение 20 минут`\n`Лечь до 23:00`",
+        reply_markup=habits_input_kb(),
+    )
     await safe_answer_callback(call)
 
 
@@ -234,17 +238,21 @@ async def add_habit_finish(message: Message, state: FSMContext) -> None:
     if message.from_user is None:
         return
 
-    title = (message.text or "").strip()
+    raw = message.text or ""
     await safe_delete_message(message)
 
-    if not title:
+    titles = [x.strip() for x in raw.splitlines()]
+    titles = [x for x in titles if x]
+    if not titles:
         return
 
     session_maker = get_session_maker()
     async with session_maker() as session:
         users_repo = UsersRepo(session)
         user = await users_repo.get_or_create(message.from_user.id)
-        await HabitService(session).add_habit(user.id, title)
+        service = HabitService(session)
+        for title in titles:
+            await service.add_habit(user.id, title)
         await session.commit()
 
     await state.clear()

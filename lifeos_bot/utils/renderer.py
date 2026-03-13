@@ -49,13 +49,13 @@ def render_dashboard(
         ]
     )
 
-    habits_block = ""
-    if stats.habits_list:
+    goals_block = ""
+    if stats.goals_list:
         lines: list[str] = []
-        for i, (title, done) in enumerate(stats.habits_list):
+        for i, (title, done) in enumerate(stats.goals_list):
             mark = "✅" if done else "⬜️"
             lines.append(f"{i + 1}. {mark} {title}")
-        habits_block = "\n\n<b>⚡ Привычки</b>\n" + "\n".join(lines)
+        goals_block = "\n\n<b>🎯 Цели дня</b>\n" + "\n".join(lines)
 
     schedule_block = ""
     if stats.events_list:
@@ -69,4 +69,4 @@ def render_dashboard(
             lines.append(f"{time}{title}")
         schedule_block = "\n\n<b>📅 Расписание</b>\n" + "\n".join(lines)
 
-    return DashboardView(text=header + quote_block + body + habits_block + schedule_block, keyboard=keyboard)
+    return DashboardView(text=header + quote_block + body + goals_block + schedule_block, keyboard=keyboard)

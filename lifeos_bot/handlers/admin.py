@@ -83,7 +83,7 @@ async def admin_broadcast_start(call: CallbackQuery, state: FSMContext) -> None:
     )
     await safe_edit_message_text(
         call.message,
-        "Отправьте текст рассылки одним сообщением:",
+        "Отправьте текст рассылки одним сообщением.\n\nПример:\n`Привет! Сегодня в 20:00 будет обновление бота.`",
         reply_markup=kb,
     )
     await safe_answer_callback(call)

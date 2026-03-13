@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import monotonic
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -23,6 +24,11 @@ from lifeos_bot.utils.renderer import render_dashboard
 router = Router()
 
 
+_SUPPORT_MAX_CHARS = 2000
+_SUPPORT_RATE_LIMIT_SECONDS = 60
+_last_support_ts_by_tg: dict[int, float] = {}
+
+
 class SupportStates(StatesGroup):
     waiting_text = State()
 
@@ -39,7 +45,7 @@ async def support_start(call: CallbackQuery, state: FSMContext) -> None:
 
     await safe_edit_message_text(
         call.message,
-        "Опишите проблему или предложение. Сообщение будет отправлено администраторам.",
+        "Опишите проблему или предложение. Сообщение будет отправлено администраторам.\n\nПример:\n`Не сохраняется расписание на завтра, когда добавляю несколько событий.`",
         reply_markup=support_cancel_kb(),
     )
     await safe_answer_callback(call)
@@ -78,6 +84,43 @@ async def support_finish(message: Message, state: FSMContext) -> None:
 
     if not text:
         return
+
+    if len(text) > _SUPPORT_MAX_CHARS:
+        data = await state.get_data()
+        await state.clear()
+
+        chat_id = data.get("prompt_chat_id")
+        message_id = data.get("prompt_message_id")
+        if chat_id and message_id:
+            await safe_bot_edit_message_text(
+                bot=message.bot,
+                chat_id=chat_id,
+                message_id=message_id,
+                text=f"Сообщение слишком длинное. Максимум {_SUPPORT_MAX_CHARS} символов.",
+                reply_markup=support_ok_kb(),
+            )
+        return
+
+    now = monotonic()
+    tg_user_id = int(message.from_user.id)
+    last_ts = _last_support_ts_by_tg.get(tg_user_id, 0.0)
+    if now - last_ts < _SUPPORT_RATE_LIMIT_SECONDS:
+        data = await state.get_data()
+        await state.clear()
+
+        chat_id = data.get("prompt_chat_id")
+        message_id = data.get("prompt_message_id")
+        if chat_id and message_id:
+            await safe_bot_edit_message_text(
+                bot=message.bot,
+                chat_id=chat_id,
+                message_id=message_id,
+                text="Слишком часто. Попробуйте отправить сообщение чуть позже.",
+                reply_markup=support_ok_kb(),
+            )
+        return
+
+    _last_support_ts_by_tg[tg_user_id] = now
 
     session_maker = get_session_maker()
     async with session_maker() as session:

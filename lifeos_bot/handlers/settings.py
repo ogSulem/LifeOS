@@ -53,7 +53,7 @@ def _render_habit_template(items: list[str]) -> SettingsView:
     if not items:
         body = "\n\nПока пусто."
     else:
-        body = "\n\n" + "\n".join(items)
+        body = "\n\n" + "\n".join([f"{i + 1}. {t}" for i, t in enumerate(items)])
     hint = "\n\nНажмите \"Изменить\", затем отправьте несколько строк."
     return SettingsView(text=header + body + hint)
 
@@ -176,7 +176,7 @@ async def schedule_template_edit_start(call: CallbackQuery, state: FSMContext) -
     await state.set_state(SettingsStates.waiting_schedule_template)
     await safe_edit_message_text(
         call.message,
-        "Отправьте шаблон расписания несколькими строками (например: `10:00 Тренировка`):",
+        "Отправьте шаблон расписания несколькими строками.\n\nПример:\n`10:00 Тренировка`\n`13:00 Обед`\n`Прогулка`",
         reply_markup=settings_input_kb("settings:schedule"),
     )
     await safe_answer_callback(call)
@@ -193,7 +193,7 @@ async def habit_template_edit_start(call: CallbackQuery, state: FSMContext) -> N
     await state.set_state(SettingsStates.waiting_habit_template)
     await safe_edit_message_text(
         call.message,
-        "Отправьте шаблон привычек несколькими строками:",
+        "Отправьте шаблон привычек несколькими строками.\n\nПример:\n`Вода 2л`\n`Чтение 20 минут`",
         reply_markup=settings_input_kb("settings:habits"),
     )
     await safe_answer_callback(call)

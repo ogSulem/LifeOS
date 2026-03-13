@@ -121,7 +121,7 @@ async def add_goal_start(call: CallbackQuery, state: FSMContext) -> None:
         await safe_answer_callback(call)
         return
     await state.set_state(GoalsStates.waiting_title)
-    await safe_edit_message_text(call.message, "Введите цель одним сообщением:", reply_markup=goals_input_kb())
+    await safe_edit_message_text(call.message, "Введите цель одним сообщением.\n\nПример:\n`Сделать зарядку`\nили несколько строк:\n`Сделать зарядку`\n`Прочитать 20 страниц`", reply_markup=goals_input_kb())
     await safe_answer_callback(call)
 
 

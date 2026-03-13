@@ -102,7 +102,11 @@ async def add_gratitude_start(call: CallbackQuery, state: FSMContext) -> None:
             await safe_answer_callback(call)
         return
     await state.set_state(GratitudeStates.waiting_text)
-    await safe_edit_message_text(call.message, "Введите благодарность одним сообщением:", reply_markup=gratitude_input_kb())
+    await safe_edit_message_text(
+        call.message,
+        "Введите благодарности одним сообщением — по одной на строку.\n\nПример:\n`Спасибо за разговор с мамой`\n`Спасибо за прогулку`",
+        reply_markup=gratitude_input_kb(),
+    )
     await safe_answer_callback(call)
 
 

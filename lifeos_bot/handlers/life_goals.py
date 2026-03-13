@@ -189,7 +189,7 @@ async def add_category_start(call: CallbackQuery, state: FSMContext) -> None:
             await safe_answer_callback(call)
         return
     await state.set_state(LifeGoalsStates.waiting_category_title)
-    await safe_edit_message_text(call.message, "Введите название категории одним сообщением:", reply_markup=life_input_kb("life:cats_back"))
+    await safe_edit_message_text(call.message, "Введите название категории одним сообщением (например: `Здоровье`):", reply_markup=life_input_kb("life:cats_back"))
     await safe_answer_callback(call)
 
 
@@ -322,7 +322,11 @@ async def add_goal_start(call: CallbackQuery, state: FSMContext) -> None:
         return
     await state.update_data(active_category_id=category_id)
     await state.set_state(LifeGoalsStates.waiting_goal_title)
-    await safe_edit_message_text(call.message, "Введите цель одним сообщением:", reply_markup=life_input_kb("life:goal_back"))
+    await safe_edit_message_text(
+        call.message,
+        "Введите цели одним сообщением — по одной на строку.\n\nПример:\n`Выучить английский до B2`\n`Сделать 10 подтягиваний`\n`Наладить сон`",
+        reply_markup=life_input_kb("life:goal_back"),
+    )
     await safe_answer_callback(call)
 
 
@@ -356,9 +360,12 @@ async def add_goal_back(call: CallbackQuery, state: FSMContext) -> None:
 async def add_goal_finish(message: Message, state: FSMContext) -> None:
     if message.from_user is None:
         return
-    title = (message.text or "").strip()
+    raw = message.text or ""
     await safe_delete_message(message)
-    if not title:
+
+    titles = [x.strip() for x in raw.splitlines()]
+    titles = [x for x in titles if x]
+    if not titles:
         return
 
     data = await state.get_data()
@@ -375,7 +382,8 @@ async def add_goal_finish(message: Message, state: FSMContext) -> None:
         if cat is None or cat.user_id != user.id:
             await state.clear()
             return
-        await service.add_goal(category_id, title)
+        for title in titles:
+            await service.add_goal(category_id, title)
         await session.commit()
 
     await state.clear()

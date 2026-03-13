@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from aiogram import F, Router
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from lifeos_bot.utils.telegram_safe import safe_answer_callback, safe_edit_message_text
 
@@ -74,10 +75,19 @@ async def _render_analytics_text(user_id: int, snapshot) -> AnalyticsView:
         enabled=settings.openrouter_enabled,
     )
     try:
-        ai_advice = await ai_service.get_coach_recommendation(user_id=user_id, snapshot=snapshot, timeline=timeline)
+        ai_advice, is_ai = await ai_service.get_coach_recommendation_with_source(
+            user_id=user_id,
+            snapshot=snapshot,
+            timeline=timeline,
+        )
     except Exception:
         logger.exception("AI coach recommendation failed (user_id=%s)", user_id)
         ai_advice = "AI-коуч сейчас недоступен."
+        is_ai = True
+
+    if not is_ai:
+        ai_advice = f"{ai_advice}\n(не нейросеть)"
+
     text += f"\n<b>AI-коуч</b>\n{ai_advice}\n"
 
     return AnalyticsView(text=text)
@@ -100,20 +110,21 @@ async def _get_snapshot(tg_user_id: int, mode: str):
 
 
 @router.callback_query(F.data == "nav:analytics")
-async def open_analytics(call: CallbackQuery) -> None:
+async def open_analytics(call: CallbackQuery, state: FSMContext) -> None:
     if call.from_user is None or call.message is None:
         if call.from_user is not None:
             await safe_answer_callback(call)
         return
 
     user, snap = await _get_snapshot(call.from_user.id, mode="day")
+    await state.update_data(analytics_mode="day")
     view = await _render_analytics_text(user_id=user.id, snapshot=snap)
     await safe_edit_message_text(call.message, view.text, reply_markup=analytics_kb())
     await safe_answer_callback(call)
 
 
 @router.callback_query(F.data.startswith("analytics:"))
-async def switch_analytics(call: CallbackQuery) -> None:
+async def switch_analytics(call: CallbackQuery, state: FSMContext) -> None:
     if call.from_user is None or call.message is None:
         if call.from_user is not None:
             await safe_answer_callback(call)
@@ -127,10 +138,23 @@ async def switch_analytics(call: CallbackQuery) -> None:
         await safe_answer_callback(call)
         return
     mode = parts[1]
-    if mode not in {"day", "week", "month"}:
+    if mode not in {"day", "week", "month", "ai"}:
         await safe_answer_callback(call)
         return
 
+    if mode == "ai":
+        data = await state.get_data()
+        current_mode = data.get("analytics_mode")
+        if current_mode not in {"day", "week", "month"}:
+            current_mode = "day"
+
+        user, snap = await _get_snapshot(call.from_user.id, mode=str(current_mode))
+        view = await _render_analytics_text(user_id=user.id, snapshot=snap)
+        await safe_edit_message_text(call.message, view.text, reply_markup=analytics_kb())
+        await safe_answer_callback(call)
+        return
+
+    await state.update_data(analytics_mode=mode)
     user, snap = await _get_snapshot(call.from_user.id, mode=mode)
     view = await _render_analytics_text(user_id=user.id, snapshot=snap)
     await safe_edit_message_text(call.message, view.text, reply_markup=analytics_kb())

@@ -228,7 +228,7 @@ async def schedule_evt_time_start(call: CallbackQuery, state: FSMContext) -> Non
     await state.clear()
     await state.set_state(ScheduleStates.waiting_edit_time)
     await state.update_data(event_id=event_id, page=page)
-    await safe_edit_message_text(call.message, "Введите время (например: `09:00`):", reply_markup=schedule_input_kb())
+    await safe_edit_message_text(call.message, "Введите время события (например: `09:00`):", reply_markup=schedule_input_kb())
     await safe_answer_callback(call)
 
 
@@ -252,7 +252,7 @@ async def schedule_evt_title_start(call: CallbackQuery, state: FSMContext) -> No
     await state.clear()
     await state.set_state(ScheduleStates.waiting_edit_title)
     await state.update_data(event_id=event_id, page=page)
-    await safe_edit_message_text(call.message, "Введите новое название события:", reply_markup=schedule_input_kb())
+    await safe_edit_message_text(call.message, "Введите новое название события (например: `Созвон с командой`):", reply_markup=schedule_input_kb())
     await safe_answer_callback(call)
 
 
@@ -265,7 +265,7 @@ async def schedule_add_start(call: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(ScheduleStates.waiting_event_text)
     await safe_edit_message_text(
         call.message,
-        "Введите события одним сообщением — по одному на строку (например: `09:00-10:00 Встреча`):",
+        "Введите события одним сообщением — по одному на строку.\n\nПример:\n`09:00-10:00 Встреча`\n`14:00 Обед`\n`Прогулка`",
         reply_markup=schedule_input_kb(),
     )
     await safe_answer_callback(call)
@@ -278,7 +278,7 @@ async def schedule_edit_start(call: CallbackQuery, state: FSMContext) -> None:
             await safe_answer_callback(call)
         return
     await state.set_state(ScheduleStates.waiting_edit_index)
-    await safe_edit_message_text(call.message, "Отправьте номер события для изменения:", reply_markup=schedule_input_kb())
+    await safe_edit_message_text(call.message, "Отправьте номер события для изменения (например: `2`):", reply_markup=schedule_input_kb())
     await safe_answer_callback(call)
 
 
@@ -289,7 +289,7 @@ async def schedule_delete_start(call: CallbackQuery, state: FSMContext) -> None:
             await safe_answer_callback(call)
         return
     await state.set_state(ScheduleStates.waiting_delete_index)
-    await safe_edit_message_text(call.message, "Отправьте номер события для удаления:", reply_markup=schedule_input_kb())
+    await safe_edit_message_text(call.message, "Отправьте номер события для удаления (например: `3`):", reply_markup=schedule_input_kb())
     await safe_answer_callback(call)
 
 
@@ -380,7 +380,7 @@ async def schedule_edit_index(message: Message, state: FSMContext) -> None:
             bot=message.bot,
             chat_id=user.dashboard_chat_id,
             message_id=user.dashboard_message_id,
-            text="Введите новое значение события (например: `09:00-10:00 Встреча`):",
+            text="Введите новое значение события (например: `09:00-10:00 Встреча` или `Прогулка`):",
             reply_markup=schedule_input_kb(),
         )
 

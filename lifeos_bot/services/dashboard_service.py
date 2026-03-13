@@ -21,6 +21,7 @@ class DashboardStats:
     habits_done: int
     streak: int
     streak_text: str
+    goals_list: list[tuple[str, bool]] = field(default_factory=list)
     habits_list: list[tuple[str, bool]] = field(default_factory=list)
     events_list: list[tuple[str | None, str | None, str]] = field(default_factory=list)
     wakeup_at: str | None = None
@@ -41,6 +42,7 @@ class DashboardService:
 
         goals_total = await self._count(DailyGoal, user_id, day)
         goals_done = await self._count(DailyGoal, user_id, day, done_only=True)
+        goals_list = await self._goals_day(user_id, day)
 
         habits_total, habits_done, habits_list = await self._habits_day(user_id, day)
 
@@ -58,6 +60,7 @@ class DashboardService:
             events=events,
             habits_total=habits_total,
             habits_done=habits_done,
+            goals_list=goals_list,
             habits_list=habits_list,
             streak=streak,
             streak_text=streak_text,
@@ -127,6 +130,15 @@ class DashboardService:
             stmt = stmt.where(model.is_done.is_(True))
         res = await self.session.execute(stmt)
         return int(res.scalar_one() or 0)
+
+    async def _goals_day(self, user_id: int, day: date) -> list[tuple[str, bool]]:
+        res = await self.session.execute(
+            select(DailyGoal.title, DailyGoal.is_done)
+            .where(DailyGoal.user_id == user_id, DailyGoal.day == day)
+            .order_by(DailyGoal.id.desc())
+            .limit(5)
+        )
+        return [(str(title), bool(is_done)) for title, is_done in res.all()]
 
     async def _habits_day(self, user_id: int, day: date) -> tuple[int, int, list[tuple[str, bool]]]:
         res = await self.session.execute(

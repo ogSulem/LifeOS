@@ -20,9 +20,19 @@ class AIService:
         self.enabled = enabled
 
     async def get_coach_recommendation(self, user_id: int, snapshot: AnalyticsSnapshot, timeline: list[dict[str, Any]]) -> str:
+        text, _is_ai = await self.get_coach_recommendation_with_source(user_id=user_id, snapshot=snapshot, timeline=timeline)
+        return text
+
+    async def get_coach_recommendation_with_source(
+        self,
+        user_id: int,
+        snapshot: AnalyticsSnapshot,
+        timeline: list[dict[str, Any]],
+    ) -> tuple[str, bool]:
         if self.enabled and self.api_key:
             try:
-                return await self._openrouter_coach(user_id=user_id, snapshot=snapshot, timeline=timeline)
+                text = await self._openrouter_coach(user_id=user_id, snapshot=snapshot, timeline=timeline)
+                return text, True
             except Exception:
                 logging.exception("AI coach failed, falling back to heuristic recommendation")
 
@@ -65,7 +75,7 @@ class AIService:
         parts.append(focus_line)
         parts.append(habits_line)
 
-        return "\n".join(f"- {p}" for p in parts)
+        return "\n".join(f"- {p}" for p in parts), False
 
     async def _openrouter_coach(
         self,

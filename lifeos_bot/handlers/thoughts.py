@@ -102,7 +102,7 @@ async def add_thought_start(call: CallbackQuery, state: FSMContext) -> None:
             await safe_answer_callback(call)
         return
     await state.set_state(ThoughtsStates.waiting_text)
-    await safe_edit_message_text(call.message, "Введите мысль одним сообщением:", reply_markup=thoughts_input_kb())
+    await safe_edit_message_text(call.message, "Введите мысль одним сообщением (например: `Сегодня я молодец — сделал сложную задачу`):", reply_markup=thoughts_input_kb())
     await safe_answer_callback(call)
 
 
