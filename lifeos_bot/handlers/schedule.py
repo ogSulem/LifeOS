@@ -265,7 +265,7 @@ async def schedule_add_start(call: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(ScheduleStates.waiting_event_text)
     await safe_edit_message_text(
         call.message,
-        "Введите событие одним сообщением (например: `09:00-10:00 Встреча`):",
+        "Введите события одним сообщением — по одному на строку (например: `09:00-10:00 Встреча`):",
         reply_markup=schedule_input_kb(),
     )
     await safe_answer_callback(call)
@@ -313,16 +313,29 @@ async def schedule_add_finish(message: Message, state: FSMContext) -> None:
     raw = message.text or ""
     await safe_delete_message(message)
 
-    parsed = _parse_event(raw)
-    if parsed is None:
+    parsed_items: list[tuple[str | None, str | None, str]] = []
+    for line in raw.splitlines():
+        parsed = _parse_event(line)
+        if parsed is None:
+            continue
+        parsed_items.append(parsed)
+
+    if not parsed_items:
         return
-    time_from, time_to, title = parsed
 
     session_maker = get_session_maker()
     async with session_maker() as session:
         users_repo = UsersRepo(session)
         user = await users_repo.get_or_create(message.from_user.id)
-        await ScheduleService(session).add_event(user.id, user.selected_date, title=title, time_from=time_from, time_to=time_to)
+        service = ScheduleService(session)
+        for time_from, time_to, title in parsed_items:
+            await service.add_event(
+                user.id,
+                user.selected_date,
+                title=title,
+                time_from=time_from,
+                time_to=time_to,
+            )
         await session.commit()
 
     await state.clear()
