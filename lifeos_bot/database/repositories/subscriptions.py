@@ -24,7 +24,7 @@ class SubscriptionsRepo:
         if not sub.is_active:
             return False
         if sub.active_until is None:
-            return True
+            return False
         return sub.active_until >= datetime.utcnow()
 
     async def activate_by_user_id(self, user_id: int, days: int = 30) -> None:
