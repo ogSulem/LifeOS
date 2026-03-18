@@ -6,6 +6,7 @@ import logging
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.types import BotCommand
 
 from lifeos_bot.bot.dispatcher import create_dispatcher
 from lifeos_bot.config import settings
@@ -44,6 +45,12 @@ async def main() -> None:
     bot = Bot(
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
+
+    await bot.set_my_commands(
+        [
+            BotCommand(command="start", description="Запуск / главное меню"),
+        ]
     )
     dp = create_dispatcher()
 

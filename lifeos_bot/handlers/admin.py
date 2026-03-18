@@ -83,8 +83,6 @@ async def admin_reset_trial(call: CallbackQuery) -> None:
     session_maker = get_session_maker()
     async with session_maker() as session:
         user = await UsersRepo(session).get_or_create(call.from_user.id)
-        await SubscriptionsRepo(session).deactivate_by_user_id(user.id)
-
         sub_res = await session.execute(select(Subscription).where(Subscription.user_id == user.id))
         sub = sub_res.scalar_one_or_none()
         if sub is not None:
