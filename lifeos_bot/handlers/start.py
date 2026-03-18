@@ -45,16 +45,19 @@ async def start(message: Message) -> None:
         text = view.text
         kb = view.keyboard
 
+    sent_or_edited = False
+
     # Prefer editing existing "main" message if it was already saved
     if user.dashboard_chat_id and user.dashboard_message_id:
-        await safe_bot_edit_message_text(
+        sent_or_edited = await safe_bot_edit_message_text(
             bot=message.bot,
             chat_id=user.dashboard_chat_id,
             message_id=user.dashboard_message_id,
             text=text,
             reply_markup=kb,
         )
-    else:
+
+    if not sent_or_edited:
         sent = await safe_send_message(message.bot, chat_id=message.chat.id, text=text, reply_markup=kb)
         if sent is None:
             await safe_delete_message(message)
@@ -66,5 +69,7 @@ async def start(message: Message) -> None:
             if db_user:
                 await repo.set_dashboard_message(db_user.id, sent.chat.id, sent.message_id)
             await session.commit()
+        sent_or_edited = True
 
-    await safe_delete_message(message)
+    if sent_or_edited:
+        await safe_delete_message(message)
