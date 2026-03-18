@@ -8,8 +8,9 @@ from aiogram.types import CallbackQuery, Message, TelegramObject
 from lifeos_bot.config import settings
 from lifeos_bot.database.db import get_session_maker
 from lifeos_bot.database.repositories.subscriptions import SubscriptionsRepo
+from lifeos_bot.database.repositories.users import UsersRepo
 from lifeos_bot.keyboards.payments_kb import buy_subscription_kb
-from lifeos_bot.utils.telegram_safe import safe_answer_callback, safe_delete_message, safe_edit_message_text
+from lifeos_bot.utils.telegram_safe import safe_answer_callback, safe_bot_edit_message_text, safe_delete_message, safe_edit_message_text, safe_send_message
 
 
 SUBSCRIPTION_TEXT = (
@@ -73,18 +74,66 @@ class SubscriptionMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         # Blocked: show subscription screen
-        if isinstance(event, CallbackQuery):
-            if event.message:
+        async def _show_subscription_screen_from_message(message: Message | None) -> None:
+            if message is not None:
                 await safe_edit_message_text(
-                    event.message,
+                    message,
                     SUBSCRIPTION_TEXT,
                     reply_markup=buy_subscription_kb(show_back=False),
                 )
+
+        async def _show_subscription_screen_for_user() -> None:
+            session_maker = get_session_maker()
+            async with session_maker() as session:
+                users_repo = UsersRepo(session)
+                db_user = await users_repo.get_or_create(user.id)
+                chat_id = db_user.dashboard_chat_id
+                message_id = db_user.dashboard_message_id
+                await session.commit()
+
+            if chat_id and message_id:
+                await safe_bot_edit_message_text(
+                    bot=getattr(event, "bot", None),
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    text=SUBSCRIPTION_TEXT,
+                    reply_markup=buy_subscription_kb(show_back=False),
+                )
+                return
+
+            chat_id = getattr(getattr(event, "chat", None), "id", None)
+            if chat_id is None:
+                chat_id = getattr(getattr(getattr(event, "message", None), "chat", None), "id", None)
+            if chat_id is None:
+                return
+
+            sent = await safe_send_message(
+                bot=getattr(event, "bot", None),
+                chat_id=chat_id,
+                text=SUBSCRIPTION_TEXT,
+                reply_markup=buy_subscription_kb(show_back=False),
+            )
+            if sent is None:
+                return
+
+            session_maker = get_session_maker()
+            async with session_maker() as session:
+                users_repo = UsersRepo(session)
+                db_user = await users_repo.get_or_create(user.id)
+                await users_repo.set_dashboard_message(db_user.id, sent.chat.id, sent.message_id)
+                await session.commit()
+
+        if isinstance(event, CallbackQuery):
+            if event.message:
+                await _show_subscription_screen_from_message(event.message)
+            else:
+                await _show_subscription_screen_for_user()
             await safe_answer_callback(event, "Нужна подписка", show_alert=True)
             return None
 
         if isinstance(event, Message):
             await safe_delete_message(event)
+            await _show_subscription_screen_for_user()
             return None
 
         return await handler(event, data)

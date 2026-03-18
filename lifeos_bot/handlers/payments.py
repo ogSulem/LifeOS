@@ -25,7 +25,6 @@ router = Router()
 @router.callback_query(F.data == "nav:payments")
 async def open_payments(call: CallbackQuery) -> None:
     if call.from_user is None or call.message is None:
-        await safe_answer_callback(call)
         return
 
     session_maker = get_session_maker()
@@ -48,6 +47,28 @@ async def open_payments(call: CallbackQuery) -> None:
         reply_markup=buy_subscription_kb(show_back=True, back_callback_data="nav:dashboard"),
     )
     await safe_answer_callback(call)
+
+
+@router.callback_query(F.data == "pay:trial")
+async def trial_subscription(call: CallbackQuery) -> None:
+    if call.from_user is None or call.message is None:
+        if call.from_user is not None:
+            await safe_answer_callback(call)
+        return
+
+    session_maker = get_session_maker()
+    async with session_maker() as session:
+        user = await UsersRepo(session).get_or_create(call.from_user.id)
+        await SubscriptionsRepo(session).activate_by_user_id(user.id, days=3)
+        stats = await DashboardService(session).stats_for_day(user.id, user.selected_date)
+        await session.commit()
+
+    data_path = Path(__file__).resolve().parents[1] / "data" / "quotes.json"
+    quote = QuoteService(data_path).get_quote_of_day()
+    view = render_dashboard(user.selected_date, quote, dashboard_kb(user.selected_date, tg_user_id=user.tg_user_id), stats)
+    await safe_edit_message_text(call.message, view.text, reply_markup=view.keyboard)
+    await safe_answer_callback(call, "Тест активирован на 3 дня")
+    return
 
 
 @router.callback_query(F.data == "pay:buy")

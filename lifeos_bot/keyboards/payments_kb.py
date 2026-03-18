@@ -5,6 +5,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 def buy_subscription_kb(*, show_back: bool = True, back_callback_data: str = "nav:dashboard") -> InlineKeyboardMarkup:
     inline_keyboard: list[list[InlineKeyboardButton]] = [
+        [InlineKeyboardButton(text="🆓 Тест на 3 дня", callback_data="pay:trial")],
         [InlineKeyboardButton(text="💳 Купить подписку", callback_data="pay:buy")],
     ]
     if show_back:

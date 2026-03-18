@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lifeos_bot.database.models import DailyGoal, DailyStat, Event, Gratitude, Habit, HabitLog, SleepLog, Thought
+from lifeos_bot.database.models import DailyGoal, DailyStat, Event, Gratitude, Habit, HabitLog, SleepLog, Subscription, Thought
 
 
 @dataclass(frozen=True)
@@ -29,12 +29,20 @@ class DashboardStats:
     mood: int | None = None
     day_rating: int | None = None
 
+    subscription_until: str | None = None
+
 
 class DashboardService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
     async def stats_for_day(self, user_id: int, day: date) -> DashboardStats:
+        sub_res = await self.session.execute(select(Subscription).where(Subscription.user_id == user_id))
+        sub = sub_res.scalar_one_or_none()
+        subscription_until: str | None = None
+        if sub is not None and sub.active_until is not None:
+            subscription_until = sub.active_until.strftime("%d.%m.%Y")
+
         thoughts = await self._count(Thought, user_id, day)
         gratitude = await self._count(Gratitude, user_id, day)
         events_list = await self._events_day(user_id, day)
@@ -69,6 +77,7 @@ class DashboardService:
             sleep_at=sleep_at,
             mood=mood,
             day_rating=day_rating,
+            subscription_until=subscription_until,
         )
 
     async def _calculate_streak(self, user_id: int, start_day: date) -> int:

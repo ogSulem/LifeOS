@@ -30,6 +30,8 @@ def render_dashboard(
     sleep = stats.sleep_at or "—"
     meta_lines.append(f"☀️ {wakeup}")
     meta_lines.append(f"🌙 {sleep}")
+    if stats.subscription_until:
+        meta_lines.append(f"💳 Подписка: до {stats.subscription_until}")
     header += "\n" + "\n".join(meta_lines)
 
     quote_block = ""
