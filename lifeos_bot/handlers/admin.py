@@ -7,8 +7,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from sqlalchemy import select
+
 from lifeos_bot.config import settings
 from lifeos_bot.database.db import get_session_maker
+from lifeos_bot.database.models import Subscription
 from lifeos_bot.database.repositories.subscriptions import SubscriptionsRepo
 from lifeos_bot.database.repositories.users import UsersRepo
 from lifeos_bot.keyboards.main_kb import dashboard_kb
@@ -39,6 +42,7 @@ def _admin_panel_kb() -> InlineKeyboardMarkup:
             ],
             [InlineKeyboardButton(text="📣 Рассылка", callback_data="admin:broadcast")],
             [InlineKeyboardButton(text="💳 Подписка (тест)", callback_data="admin:sub:test")],
+            [InlineKeyboardButton(text="🆓 Сбросить тест (3 дня)", callback_data="admin:sub:trial:reset")],
             [InlineKeyboardButton(text="⬅️ Назад", callback_data="nav:dashboard")],
         ]
     )
@@ -56,6 +60,7 @@ async def admin_panel_open(call: CallbackQuery, state: FSMContext) -> None:
         if call.from_user is not None:
             await safe_answer_callback(call)
         return
+
     if not _is_admin(call.from_user.id):
         await safe_answer_callback(call)
         return
@@ -63,6 +68,36 @@ async def admin_panel_open(call: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await safe_edit_message_text(call.message, "<b>🛠 Админ-панель</b>", reply_markup=_admin_panel_kb())
     await safe_answer_callback(call)
+
+
+@router.callback_query(F.data == "admin:sub:trial:reset")
+async def admin_reset_trial(call: CallbackQuery) -> None:
+    if call.from_user is None or call.message is None:
+        if call.from_user is not None:
+            await safe_answer_callback(call)
+        return
+    if not _is_admin(call.from_user.id):
+        await safe_answer_callback(call)
+        return
+
+    session_maker = get_session_maker()
+    async with session_maker() as session:
+        user = await UsersRepo(session).get_or_create(call.from_user.id)
+        await SubscriptionsRepo(session).deactivate_by_user_id(user.id)
+
+        sub_res = await session.execute(select(Subscription).where(Subscription.user_id == user.id))
+        sub = sub_res.scalar_one_or_none()
+        if sub is not None:
+            sub.trial_used_at = None
+        await session.commit()
+
+    await safe_edit_message_text(
+        call.message,
+        SUBSCRIPTION_TEXT,
+        reply_markup=buy_subscription_kb(show_back=False, show_trial=True),
+    )
+    await safe_answer_callback(call, "Тест сброшен")
+    return
 
 
 @router.callback_query(F.data == "admin:broadcast")
@@ -184,11 +219,14 @@ async def admin_test_subscription(call: CallbackQuery) -> None:
     async with session_maker() as session:
         user = await UsersRepo(session).get_or_create(call.from_user.id)
         await SubscriptionsRepo(session).deactivate_by_user_id(user.id)
+        sub_res = await session.execute(select(Subscription).where(Subscription.user_id == user.id))
+        sub = sub_res.scalar_one_or_none()
+        show_trial = sub is None or sub.trial_used_at is None
         await session.commit()
 
     await safe_edit_message_text(
         call.message,
         SUBSCRIPTION_TEXT,
-        reply_markup=buy_subscription_kb(show_back=True, back_callback_data="admin:panel", show_trial=True),
+        reply_markup=buy_subscription_kb(show_back=False, show_trial=show_trial),
     )
     await safe_answer_callback(call)
