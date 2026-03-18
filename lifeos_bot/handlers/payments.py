@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from lifeos_bot.utils.telegram_safe import safe_answer_callback, safe_edit_message_text, safe_bot_edit_message_text, safe_delete_message
 
+from sqlalchemy import select
+
 from lifeos_bot.config import settings
 from lifeos_bot.database.db import get_session_maker
+from lifeos_bot.database.models import Subscription
 from lifeos_bot.database.repositories.payments import PaymentsRepo
 from lifeos_bot.database.repositories.subscriptions import SubscriptionsRepo
 from lifeos_bot.database.repositories.users import UsersRepo
@@ -29,14 +34,18 @@ async def open_payments(call: CallbackQuery) -> None:
 
     session_maker = get_session_maker()
     async with session_maker() as session:
+        user = await UsersRepo(session).get_or_create(call.from_user.id)
         active = await SubscriptionsRepo(session).is_active_by_tg_id(call.from_user.id)
+        sub_res = await session.execute(select(Subscription).where(Subscription.user_id == user.id))
+        sub = sub_res.scalar_one_or_none()
+        show_trial = sub is None or sub.trial_used_at is None
         await session.commit()
 
     if not active:
         await safe_edit_message_text(
             call.message,
             SUBSCRIPTION_TEXT,
-            reply_markup=buy_subscription_kb(show_back=False),
+            reply_markup=buy_subscription_kb(show_back=False, show_trial=show_trial),
         )
         await safe_answer_callback(call)
         return
@@ -44,7 +53,7 @@ async def open_payments(call: CallbackQuery) -> None:
     await safe_edit_message_text(
         call.message,
         "<b>Подписка</b>\n\nОткройте оплату и активируйте подписку.",
-        reply_markup=buy_subscription_kb(show_back=True, back_callback_data="nav:dashboard"),
+        reply_markup=buy_subscription_kb(show_back=True, back_callback_data="nav:dashboard", show_trial=show_trial),
     )
     await safe_answer_callback(call)
 
@@ -59,7 +68,28 @@ async def trial_subscription(call: CallbackQuery) -> None:
     session_maker = get_session_maker()
     async with session_maker() as session:
         user = await UsersRepo(session).get_or_create(call.from_user.id)
+
+        sub_res = await session.execute(
+            select(Subscription).where(Subscription.user_id == user.id)
+        )
+        sub = sub_res.scalar_one_or_none()
+        if sub is not None and sub.trial_used_at is not None:
+            await session.commit()
+            await safe_edit_message_text(
+                call.message,
+                SUBSCRIPTION_TEXT,
+                reply_markup=buy_subscription_kb(show_back=False, show_trial=False),
+            )
+            await safe_answer_callback(call, "Тест уже был активирован", show_alert=True)
+            return
+
         await SubscriptionsRepo(session).activate_by_user_id(user.id, days=3)
+        sub_res2 = await session.execute(
+            select(Subscription).where(Subscription.user_id == user.id)
+        )
+        sub2 = sub_res2.scalar_one_or_none()
+        if sub2 is not None and sub2.trial_used_at is None:
+            sub2.trial_used_at = datetime.utcnow()
         stats = await DashboardService(session).stats_for_day(user.id, user.selected_date)
         await session.commit()
 

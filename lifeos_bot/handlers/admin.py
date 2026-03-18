@@ -171,7 +171,7 @@ async def admin_broadcast_ok(call: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data == "admin:sub:test")
-async def admin_test_subscription(call: CallbackQuery, state: FSMContext) -> None:
+async def admin_test_subscription(call: CallbackQuery) -> None:
     if call.from_user is None or call.message is None:
         if call.from_user is not None:
             await safe_answer_callback(call)
@@ -179,8 +179,6 @@ async def admin_test_subscription(call: CallbackQuery, state: FSMContext) -> Non
     if not _is_admin(call.from_user.id):
         await safe_answer_callback(call)
         return
-
-    await state.clear()
 
     session_maker = get_session_maker()
     async with session_maker() as session:
@@ -191,7 +189,6 @@ async def admin_test_subscription(call: CallbackQuery, state: FSMContext) -> Non
     await safe_edit_message_text(
         call.message,
         SUBSCRIPTION_TEXT,
-        reply_markup=buy_subscription_kb(show_back=False),
+        reply_markup=buy_subscription_kb(show_back=True, back_callback_data="admin:panel", show_trial=True),
     )
     await safe_answer_callback(call)
-

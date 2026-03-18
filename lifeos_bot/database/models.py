@@ -86,6 +86,8 @@ class Subscription(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
     active_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    trial_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped[User] = relationship(back_populates="subscription")

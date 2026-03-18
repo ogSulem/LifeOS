@@ -6,7 +6,10 @@ from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
+from sqlalchemy import select
+
 from lifeos_bot.database.db import get_session_maker
+from lifeos_bot.database.models import Subscription
 from lifeos_bot.database.repositories.subscriptions import SubscriptionsRepo
 from lifeos_bot.database.repositories.users import UsersRepo
 from lifeos_bot.keyboards.main_kb import dashboard_kb
@@ -32,12 +35,15 @@ async def start(message: Message) -> None:
         user = await repo.get_or_create(message.from_user.id)
         await SettingsService(session).apply_templates_for_day(user.id, user.selected_date)
         active = await SubscriptionsRepo(session).is_active_by_tg_id(message.from_user.id)
+        sub_res = await session.execute(select(Subscription).where(Subscription.user_id == user.id))
+        sub = sub_res.scalar_one_or_none()
+        show_trial = sub is None or sub.trial_used_at is None
         stats = await DashboardService(session).stats_for_day(user.id, user.selected_date)
         await session.commit()
 
     if not active:
         text = SUBSCRIPTION_TEXT
-        kb = buy_subscription_kb(show_back=False)
+        kb = buy_subscription_kb(show_back=False, show_trial=show_trial)
     else:
         data_path = Path(__file__).resolve().parents[1] / "data" / "quotes.json"
         quote = QuoteService(data_path).get_quote_of_day()

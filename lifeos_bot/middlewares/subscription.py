@@ -7,10 +7,13 @@ from aiogram.types import CallbackQuery, Message, TelegramObject
 
 from lifeos_bot.config import settings
 from lifeos_bot.database.db import get_session_maker
+from lifeos_bot.database.models import Subscription
 from lifeos_bot.database.repositories.subscriptions import SubscriptionsRepo
 from lifeos_bot.database.repositories.users import UsersRepo
 from lifeos_bot.keyboards.payments_kb import buy_subscription_kb
 from lifeos_bot.utils.telegram_safe import safe_answer_callback, safe_bot_edit_message_text, safe_delete_message, safe_edit_message_text, safe_send_message
+
+from sqlalchemy import select
 
 
 SUBSCRIPTION_TEXT = (
@@ -76,10 +79,18 @@ class SubscriptionMiddleware(BaseMiddleware):
         # Blocked: show subscription screen
         async def _show_subscription_screen_from_message(message: Message | None) -> None:
             if message is not None:
+                session_maker = get_session_maker()
+                async with session_maker() as session:
+                    users_repo = UsersRepo(session)
+                    db_user = await users_repo.get_or_create(user.id)
+                    sub_res = await session.execute(select(Subscription).where(Subscription.user_id == db_user.id))
+                    sub = sub_res.scalar_one_or_none()
+                    show_trial = sub is None or sub.trial_used_at is None
+                    await session.commit()
                 await safe_edit_message_text(
                     message,
                     SUBSCRIPTION_TEXT,
-                    reply_markup=buy_subscription_kb(show_back=False),
+                    reply_markup=buy_subscription_kb(show_back=False, show_trial=show_trial),
                 )
 
         async def _show_subscription_screen_for_user() -> None:
@@ -89,6 +100,9 @@ class SubscriptionMiddleware(BaseMiddleware):
                 db_user = await users_repo.get_or_create(user.id)
                 chat_id = db_user.dashboard_chat_id
                 message_id = db_user.dashboard_message_id
+                sub_res = await session.execute(select(Subscription).where(Subscription.user_id == db_user.id))
+                sub = sub_res.scalar_one_or_none()
+                show_trial = sub is None or sub.trial_used_at is None
                 await session.commit()
 
             if chat_id and message_id:
@@ -97,7 +111,7 @@ class SubscriptionMiddleware(BaseMiddleware):
                     chat_id=chat_id,
                     message_id=message_id,
                     text=SUBSCRIPTION_TEXT,
-                    reply_markup=buy_subscription_kb(show_back=False),
+                    reply_markup=buy_subscription_kb(show_back=False, show_trial=show_trial),
                 )
                 return
 
@@ -111,7 +125,7 @@ class SubscriptionMiddleware(BaseMiddleware):
                 bot=getattr(event, "bot", None),
                 chat_id=chat_id,
                 text=SUBSCRIPTION_TEXT,
-                reply_markup=buy_subscription_kb(show_back=False),
+                reply_markup=buy_subscription_kb(show_back=False, show_trial=show_trial),
             )
             if sent is None:
                 return
